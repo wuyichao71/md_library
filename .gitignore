@@ -3,3 +3,4 @@ test/
 main.c
 *.exe
 dcdplugin.c
+*.i
