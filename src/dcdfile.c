@@ -10,9 +10,9 @@
 #define FUNC1(a) a,
 #define FUNC2(a, b) a = b,
 #define ENUM_DEFINE(...) GET_MACRO(__VA_ARGS__, FUNC2, FUNC1)(__VA_ARGS__)
-#define DEF(f) f(NSET) f(ISTRT) f(NSAVC) f(NSTEP) f(NATOM_NFREAT, 8) f(DELTA, 9) f(CHARMM_VERSION, 19) f(HDR_LENGTH, 20)
+#define DEF(f) f(CORD) f(NSET) f(ISTRT) f(NSAVC) f(NSTEP) f(NATOM_NFREAT, 9) f(DELTA) f(CHARMM_VERSION, 20) f(HDR_LENGTH)
 
-#define FIRST_RECORD_LENGTH 84
+#define FIRST_RECORD_LENGTH (HDR_LENGTH * 4)
 #define TITLE_LENGTH 80
 
 enum
@@ -56,14 +56,16 @@ int read_dcd_header(DCDFILE *dcd)
     // read_error("The dcd file is not little endian, I don't implement it now!");
   }
 
-  fread(&header, sizeof(char), 4, dcd->fp);
-  if (header != cord.magic_int)
+
+
+  // read hdr, the size is 80 chars
+  fread(hdr, sizeof(uint32_t), HDR_LENGTH, dcd->fp);
+
+  if (hdr[CORD] != cord.magic_int)
   {
     read_error("The CORD magic is not right");
   }
 
-  // read hdr, the size is 80 chars
-  fread(hdr, sizeof(uint32_t), HDR_LENGTH, dcd->fp);
   dcd->n_frames = hdr[NSET];
   dcd->initial_step = hdr[ISTRT];
   dcd->step_interval = hdr[NSAVC];
@@ -124,45 +126,12 @@ int read_dcd_header(DCDFILE *dcd)
     read_error("NATOM END: The record size of natom block is not right");
   }
 
-  dcd->xyz = (float (*)[3])malloc(dcd->n_atoms * 3 * sizeof(float));
-
-  /* read unitcell */
-  fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
-  if (48 != record_marker[0])
+  for (int dim = 0; dim < 3; dim++)
   {
-    read_error("UNITCELL BEGIN: The record size of unitcell block is not right");
+    dcd->xyz[dim] = (float *)malloc(dcd->n_atoms * sizeof(float)); 
   }
 
-  fread(dcd->unitcell, sizeof(double), 6, dcd->fp);
-
-  fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
-  if (48 != record_marker[0])
-  {
-    read_error("BOX SIZE END: The record size of unitcell block is not right");
-  };
-
-  /* read xyz data*/
-  for (int j = 0; j < 3; j++)
-  {
-    fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
-    if (sizeof(float) * dcd->n_atoms != record_marker[0])
-    {
-      read_error("XYZ BEGIN: The record size of xyz block is not right");
-    }
-
-    for (int i = 0; i < dcd->n_atoms; i++)
-    {
-      float data;
-      fread(&data, sizeof(float), 1, dcd->fp);
-      dcd->xyz[i][j] = data;
-    }
-
-    fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
-    if (sizeof(float) * dcd->n_atoms != record_marker[0])
-    {
-      read_error("XYZ END: The record size of xyz block is not right");
-    }
-  }
+  dcd->current_frame = -1;
 
 #ifdef DEBUG
   DEF(PRINT_ENUM);
@@ -181,11 +150,49 @@ int read_dcd_header(DCDFILE *dcd)
 
   // debug natom
   printf("n_atoms = %d\n", dcd->n_atoms);
-
-  printf("%f\n", dcd->xyz[100][2]);
 #endif
 
   return 0;
+}
+
+void read_dcd_next_frame(DCDFILE *dcd)
+{
+  uint32_t record_marker[2];
+
+  /* read unitcell */
+  fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
+  if (48 != record_marker[0])
+  {
+    read_error("UNITCELL BEGIN: The record size of unitcell block is not right");
+  }
+
+  fread(dcd->unitcell, sizeof(double), UNITCELL_LENGTH, dcd->fp);
+
+  fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
+  if (48 != record_marker[0])
+  {
+    read_error("BOX SIZE END: The record size of unitcell block is not right");
+  };
+
+  /* read xyz data*/
+  for (int dim = 0; dim < 3; dim++)
+  {
+    fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
+    if (sizeof(float) * dcd->n_atoms != record_marker[0])
+    {
+      read_error("XYZ BEGIN: The record size of xyz block is not right");
+    }
+
+    fread(dcd->xyz[dim], sizeof(float), dcd->n_atoms, dcd->fp);
+
+    fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
+    if (sizeof(float) * dcd->n_atoms != record_marker[0])
+    {
+      read_error("XYZ END: The record size of xyz block is not right");
+    }
+  }
+
+  dcd->current_frame++;
 }
 
 DCDFILE read_dcd(char filename[])

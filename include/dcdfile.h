@@ -10,6 +10,8 @@ enum ENDIAN
   BigEndian
 };
 
+#define UNITCELL_LENGTH 6
+
 /*
 CHARMM FORMAT
 uint32_t 84 // sometimes uint64_t
@@ -44,15 +46,17 @@ typedef struct
   uint32_t n_atoms;
 
   // unitcell
-  double unitcell[6];
+  double unitcell[UNITCELL_LENGTH];
 
   // xyz
-  float (*xyz)[3];
+  // float (*xyz)[3];
+  float *xyz[3];
 
   // current frames;
-  uint32_t current_frame;
+  int32_t current_frame;
 } DCDFILE;
 
 DCDFILE read_dcd(char filename[]);
+void read_dcd_next_frame(DCDFILE *dcd);
 
 #endif
