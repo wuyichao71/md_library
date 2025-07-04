@@ -10,7 +10,7 @@
 #define FUNC1(a) a,
 #define FUNC2(a, b) a = b,
 #define ENUM_DEFINE(...) GET_MACRO(__VA_ARGS__, FUNC2, FUNC1)(__VA_ARGS__)
-#define DEF(f) f(CORD) f(NSET) f(ISTRT) f(NSAVC) f(NSTEP) f(NATOM_NFREAT, 9) f(DELTA) f(CHARMM_VERSION, 20) f(HDR_LENGTH)
+#define DEF(f) f(CORD) f(NSET) f(ISTRT) f(NSAVC) f(NSTEP) f(NATOM_NFREAT, 9) f(DELTA) f(HAVE_UNITCELL) f(CHARMM_VERSION, 20) f(HDR_LENGTH)
 
 #define FIRST_RECORD_LENGTH (HDR_LENGTH * 4)
 #define TITLE_LENGTH 80
@@ -71,6 +71,7 @@ int read_dcd_header(DCDFILE *dcd)
   dcd->md_steps = hdr[NSTEP];
   dcd->natom_nfreat = hdr[NATOM_NFREAT];
   dcd->delta = *(float *)(hdr + DELTA);
+  dcd->have_unitcell = hdr[HAVE_UNITCELL];
   dcd->charmm_version = hdr[CHARMM_VERSION];
 
   if (dcd->charmm_version != 0)
@@ -143,6 +144,7 @@ int read_dcd_header(DCDFILE *dcd)
   printf("md_steps = %d\n", dcd->md_steps);
   printf("natom_nfreat = %d\n", dcd->natom_nfreat);
   printf("delta = %lf\n", dcd->delta);
+  printf("have_unitcell = %d\n", dcd->have_unitcell);
   printf("charmm_version = %d\n", dcd->charmm_version);
 
   // debug title
@@ -175,6 +177,7 @@ int write_dcd_header(DCDFILE *dcd)
   hdr[NSTEP] = dcd->md_steps;
   hdr[NATOM_NFREAT] = dcd->natom_nfreat;
   *(float *)(hdr + DELTA) = dcd->delta;
+  hdr[HAVE_UNITCELL] = dcd->have_unitcell;
   hdr[CHARMM_VERSION] = dcd->charmm_version;
 
   record_marker = FIRST_RECORD_LENGTH;
@@ -323,6 +326,7 @@ DCDFILE *write_open_dcd(char filename[], uint32_t n_atoms, DCDFILE *dcd)
   dcd->md_steps = 0;
   dcd->natom_nfreat = 0;
   dcd->delta = 1.0;
+  dcd->have_unitcell = 1;
   dcd->is_charmm = true;
   dcd->charmm_version = 24;
   dcd->current_frame = -1;

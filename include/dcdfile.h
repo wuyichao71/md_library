@@ -26,7 +26,8 @@ uint32_t MDSTEP // md_steps
 uint32_t[4]
 uint32_t NATOM_NFREAT // the number of fixed atoms
 float delta // MD delta step
-uint32_t[9]
+uint32_t HAVE_UNITCELL // MD delta step
+uint32_t[8]
 uint32_t CHARMM_VERSION // charmm_version
 */
 
@@ -36,12 +37,13 @@ typedef struct
   char *filename;
   // hdr information
   enum ENDIAN endian;
-  uint32_t n_frames;      // hdr[0]
-  uint32_t initial_step;  // hdr[1]
-  uint32_t step_interval; // hdr[2]
-  uint32_t md_steps;      // hdr[3]
-  uint32_t natom_nfreat;  // hdr[8]
-  double delta;           // hdr[9]
+  uint32_t n_frames;      // hdr[1]
+  uint32_t initial_step;  // hdr[2]
+  uint32_t step_interval; // hdr[3]
+  uint32_t md_steps;      // hdr[4]
+  uint32_t natom_nfreat;  // hdr[9]
+  double delta;           // hdr[10]
+  uint32_t have_unitcell; // hdr[11]
   bool is_charmm;
   uint32_t charmm_version; // hdr[19]
 
