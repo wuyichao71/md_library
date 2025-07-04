@@ -20,6 +20,12 @@ enum
   DEF(ENUM_DEFINE)
 };
 
+  const union
+  {
+    char _cord_char[4];
+    uint32_t magic_int;
+  } cord = {'C', 'O', 'R', 'D'};
+
 void read_error(const char *msg);
 
 inline void read_error(const char *msg)
@@ -34,12 +40,7 @@ int read_dcd_header(DCDFILE *dcd)
   uint32_t record_marker[2];
 
   // hdr
-  const union
-  {
-    char _cord_char[4];
-    uint32_t magic_int;
-  } cord = {'C', 'O', 'R', 'D'};
-  uint32_t header;
+  // uint32_t header;
   uint32_t hdr[HDR_LENGTH];
 
   // title
@@ -56,8 +57,6 @@ int read_dcd_header(DCDFILE *dcd)
     // read_error("The dcd file is not little endian, I don't implement it now!");
   }
 
-
-
   // read hdr, the size is 80 chars
   fread(hdr, sizeof(uint32_t), HDR_LENGTH, dcd->fp);
 
@@ -71,7 +70,7 @@ int read_dcd_header(DCDFILE *dcd)
   dcd->step_interval = hdr[NSAVC];
   dcd->md_steps = hdr[NSTEP];
   dcd->natom_nfreat = hdr[NATOM_NFREAT];
-  dcd->delta = *(float *)(hdr + 9);
+  dcd->delta = *(float *)(hdr + DELTA);
   dcd->charmm_version = hdr[CHARMM_VERSION];
 
   if (dcd->charmm_version != 0)
@@ -88,7 +87,7 @@ int read_dcd_header(DCDFILE *dcd)
 
   /* get the begin size of the second block (title). */
   fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
-  if (0 != ((record_marker[0] - 4) % 80))
+  if (0 != ((record_marker[0] - 4) % TITLE_LENGTH))
   {
     read_error("TITLE BEGIN: This titles is not multiple 80 chars");
   }
@@ -112,6 +111,7 @@ int read_dcd_header(DCDFILE *dcd)
     read_error("TITLE END: The record size is not equal to the title size!");
   }
 
+  // read natom
   fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
   if (sizeof(uint32_t) != record_marker[0])
   {
@@ -126,7 +126,7 @@ int read_dcd_header(DCDFILE *dcd)
     read_error("NATOM END: The record size of natom block is not right");
   }
 
-  for (int dim = 0; dim < 3; dim++)
+  for (int dim = 0; dim < DIM; dim++)
   {
     dcd->xyz[dim] = (float *)malloc(dcd->n_atoms * sizeof(float)); 
   }
@@ -152,7 +152,65 @@ int read_dcd_header(DCDFILE *dcd)
   printf("n_atoms = %d\n", dcd->n_atoms);
 #endif
 
-  return 0;
+  return DCD_SUCCESS;
+}
+
+int write_dcd_header(DCDFILE *dcd)
+{
+  // fseek(dcd->fp, 0, SEEK_SET);
+  uint32_t record_marker;
+  uint32_t hdr[HDR_LENGTH] = {0};
+  const char title[][TITLE_LENGTH] = {
+    "My dcd library version 0.0",
+    "Hello, DCD",
+    "Hello, DCD",
+    "Hello, DCD"
+  };
+  uint32_t ntitle = sizeof(title) / sizeof(title[0]);
+
+  hdr[CORD] = cord.magic_int;
+  hdr[NSET] = dcd->n_frames;
+  hdr[ISTRT] = dcd->initial_step;
+  hdr[NSAVC] = dcd->step_interval;
+  hdr[NSTEP] = dcd->md_steps;
+  hdr[NATOM_NFREAT] = dcd->natom_nfreat;
+  *(float *)(hdr + DELTA) = dcd->delta;
+  hdr[CHARMM_VERSION] = dcd->charmm_version;
+
+  record_marker = FIRST_RECORD_LENGTH;
+
+  // write hdr
+  fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+  fwrite(hdr, sizeof(uint32_t), HDR_LENGTH, dcd->fp);
+  fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+
+  // write title
+  record_marker = sizeof(ntitle) + sizeof(title);
+  fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+  fwrite(&ntitle, sizeof(ntitle), 1, dcd->fp);
+  for (int i = 0; i < ntitle; i++)
+  {
+    fwrite(title[i], sizeof(title[i]), 1, dcd->fp);
+  }
+  fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+
+  // write natom
+  record_marker = sizeof(dcd->n_atoms);
+  fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+  fwrite(&dcd->n_atoms, sizeof(dcd->n_atoms), 1, dcd->fp);
+  fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+
+  // fseek(dcd->fp, 0, SEEK_END);
+
+
+#ifdef DEBUG
+  printf("OUT: n_atoms = %d\n", dcd->n_atoms);
+
+  printf("OUT: title = %d\n", sizeof(title));
+  printf("OUT: title = %d\n", sizeof(title[0]));
+  printf("OUT: ntitle = %d\n", ntitle);
+#endif
+  return DCD_SUCCESS;
 }
 
 void read_dcd_next_frame(DCDFILE *dcd)
@@ -166,7 +224,7 @@ void read_dcd_next_frame(DCDFILE *dcd)
     read_error("UNITCELL BEGIN: The record size of unitcell block is not right");
   }
 
-  fread(dcd->unitcell, sizeof(double), UNITCELL_LENGTH, dcd->fp);
+  fread(dcd->unitcell, sizeof(dcd->unitcell), 1, dcd->fp);
 
   fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
   if (48 != record_marker[0])
@@ -175,7 +233,7 @@ void read_dcd_next_frame(DCDFILE *dcd)
   };
 
   /* read xyz data*/
-  for (int dim = 0; dim < 3; dim++)
+  for (int dim = 0; dim < DIM; dim++)
   {
     fread(record_marker, sizeof(uint32_t), 1, dcd->fp);
     if (sizeof(float) * dcd->n_atoms != record_marker[0])
@@ -191,15 +249,105 @@ void read_dcd_next_frame(DCDFILE *dcd)
       read_error("XYZ END: The record size of xyz block is not right");
     }
   }
-
   dcd->current_frame++;
 }
 
-DCDFILE read_dcd(char filename[])
+void write_dcd_next_frame(DCDFILE *dcd)
 {
-  DCDFILE dcd;
+  uint32_t record_marker;
+
+  /* write unitcell */
+  record_marker = UNITCELL_LENGTH * sizeof(double);
+  fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+  fwrite(dcd->unitcell, sizeof(dcd->unitcell), 1, dcd->fp);
+  fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+  // printf("sizeof(unitcell) = %d\n", sizeof(dcd->unitcell));
+
+  /* write xyz data */
+  for (int dim = 0; dim < DIM; dim++)
+  {
+    record_marker = dcd->n_atoms * sizeof(float);
+    fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+    fwrite(dcd->xyz[dim], sizeof(float), dcd->n_atoms, dcd->fp);
+    fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
+  }
+
+  /* update n_frames */
+  dcd->n_frames++;
+  dcd->md_steps++;
+  dcd->current_frame++;
+
+  long original_pos = ftell(dcd->fp);
+  fseek(dcd->fp, (1 + NSET) * sizeof(uint32_t), SEEK_SET);
+  fwrite(&dcd->n_frames, sizeof(dcd->n_frames), 1, dcd->fp);
+  fseek(dcd->fp, (1 + NSTEP) * sizeof(uint32_t), SEEK_SET);
+  fwrite(&dcd->md_steps, sizeof(dcd->n_frames), 1, dcd->fp);
+
+  fseek(dcd->fp, original_pos, SEEK_SET);
+}
+
+DCDFILE *read_open_dcd(char filename[], DCDFILE *dcd)
+{
+  dcd->fp = fopen(filename, "rb");
+  if (NULL == dcd->fp)
+  {
+    return NULL;
+  }
+
   int status;
-  dcd.fp = fopen(filename, "rb");
-  status = read_dcd_header(&dcd);
+  status = read_dcd_header(dcd);
+  if (DCD_SUCCESS != status)
+  {
+    return NULL;
+  }
   return dcd;
+}
+
+DCDFILE *write_open_dcd(char filename[], uint32_t n_atoms, DCDFILE *dcd)
+{
+  dcd->fp = fopen(filename, "wb");
+  if (NULL == dcd->fp)
+  {
+    return NULL;
+  }
+
+  dcd->n_atoms = n_atoms;
+
+  for (int dim = 0; dim < DIM; dim++)
+  {
+    dcd->xyz[dim] = (float *)malloc(dcd->n_atoms * sizeof(float)); 
+  }
+  dcd->n_frames = 0;
+  dcd->initial_step = 1;
+  dcd->step_interval = 1;
+  dcd->md_steps = 0;
+  dcd->natom_nfreat = 0;
+  dcd->delta = 1.0;
+  dcd->is_charmm = true;
+  dcd->charmm_version = 24;
+  dcd->current_frame = -1;
+  write_dcd_header(dcd);
+
+  // write_dcd_header(dcd);
+  return dcd;
+}
+
+
+void close_dcd(DCDFILE *dcd)
+{
+
+
+  for(int dim = 0; dim < DIM; dim++)
+  {
+    free(dcd->xyz[dim]);
+    dcd->xyz[dim] = NULL;
+  }
+
+  dcd->current_frame = -1;
+  dcd->n_frames = 0;
+  dcd->md_steps = 0;
+  dcd->n_atoms = 0;
+
+  fclose(dcd->fp);
+  dcd->fp = NULL;  
 }

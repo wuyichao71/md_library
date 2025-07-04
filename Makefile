@@ -1,4 +1,4 @@
-SRC = src/*
+SRC = src/lib/*
 INC = include/
 TEST_DCD = test/sort1_par1.dcd
 

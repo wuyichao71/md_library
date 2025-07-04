@@ -11,6 +11,9 @@ enum ENDIAN
 };
 
 #define UNITCELL_LENGTH 6
+#define DCD_SUCCESS 0
+#define DCD_FAILURE 1
+#define DIM 3
 
 /*
 CHARMM FORMAT
@@ -56,7 +59,11 @@ typedef struct
   int32_t current_frame;
 } DCDFILE;
 
-DCDFILE read_dcd(char filename[]);
+DCDFILE *read_open_dcd(char filename[], DCDFILE *dcd);
+DCDFILE *write_open_dcd(char filename[], uint32_t n_atoms, DCDFILE *dcd);
+// int write_dcd_header(DCDFILE *dcd);
 void read_dcd_next_frame(DCDFILE *dcd);
+void write_dcd_next_frame(DCDFILE *dcd);
+void close_dcd(DCDFILE *dcd);
 
 #endif
