@@ -98,17 +98,18 @@ void free_index(ARRAY *arr)
   arr->data = NULL;
 }
 
-void copy_frame(DCDFILE src, DCDFILE dest, ARRAY index_array)
+void copy_frame(DCDFILE *dest, DCDFILE *src, ARRAY index_array)
 {
-  memcpy(dest.unitcell, src.unitcell, sizeof(src.unitcell));
+  memcpy(dest->unitcell, src->unitcell, sizeof(src->unitcell));
+  // printf("%lf, %lf\n", src->unitcell[0], dest->unitcell[0]);
   if (index_array.length == 0) {
     for (int dim = 0; dim < DIM; dim++) {
-      memcpy(dest.xyz[dim], src.xyz[dim], src.n_atoms * sizeof(float));
+      memcpy(dest->xyz[dim], src->xyz[dim], src->n_atoms * sizeof(float));
     }
   } else {
-    for (int dim = 1; dim < DIM; dim++) {
+    for (int dim = 0; dim < DIM; dim++) {
       for (int i = 0; i < index_array.length; i++) {
-        dest.xyz[dim][i] = src.xyz[dim][index_array.data[i]];
+        dest->xyz[dim][i] = src->xyz[dim][index_array.data[i]];
       }
     }
   }
@@ -184,7 +185,6 @@ int main(int argc, char *argv[])
   if (use_trajlist && optind < argc) ERROR("You cannot specify both a trajectory list and additional filenames.");
   else if (!use_trajlist && optind >= argc) ERROR("You must input at least one trajectory file or a trajectory list.");
 
-
   // read index
   if (use_index) {
     err_p = read_index(index_name, &index_array);
@@ -194,11 +194,11 @@ int main(int argc, char *argv[])
     index_array.data = NULL; // no index data
   }
 
-  FILE *filelist_fp = fopen(trajlist_name, "r");
-  if (NULL == filelist_fp) ERROR("Can not open %s", trajlist_name);
-
   // read the first trajectory name
+  FILE *filelist_fp = NULL;
   if (use_trajlist) {
+    filelist_fp = fopen(trajlist_name, "r");
+    if (NULL == filelist_fp) ERROR("Can not open %s", trajlist_name);
     // skip empty lines
     while ((read_status = fgets(trajname, sizeof(trajname), filelist_fp)) && trajname[0] == '\n');
     if (NULL == read_status) ERROR("There is no filename in %s", trajlist_name);
@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
   for (int fi = 0; fi < in_dcd.n_frames; fi++) {
     read_dcd_next_frame(&in_dcd);
     if (use_outname == false) continue; // skip if not writing to output
-    copy_frame(in_dcd, out_dcd, index_array);
+    copy_frame(&out_dcd, &in_dcd, index_array);
     write_dcd_next_frame(&out_dcd);
   }
   close_dcd(&in_dcd);
@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
       {
         read_dcd_next_frame(&in_dcd);
         if (use_outname == false) continue; // skip if not writing to output
-        copy_frame(in_dcd, out_dcd, index_array);
+        copy_frame(&out_dcd, &in_dcd, index_array);
         write_dcd_next_frame(&out_dcd);
       }
       close_dcd(&in_dcd);
