@@ -352,6 +352,8 @@ void close_dcd(DCDFILE *dcd)
   dcd->md_steps = 0;
   dcd->n_atoms = 0;
 
-  fclose(dcd->fp);
-  dcd->fp = NULL;  
+  if (dcd->fp) {
+    fclose(dcd->fp);
+    dcd->fp = NULL;
+  }
 }
