@@ -1,7 +1,7 @@
 SRC = src/lib/*
 INC = include/
-TEST_DCD = test/sort1_par1.dcd
+TEST_XTC = example/traj/md.xtc
 
-test: test/test.c ${SRC}
+xtc: test/xtc.c ${SRC} ${INC}
 	gcc -o $@ -I ${INC} $^ -DDEBUG
-	./test ${TEST_DCD}
+	./xtc ${TEST_XTC}
