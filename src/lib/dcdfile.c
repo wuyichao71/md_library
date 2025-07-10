@@ -289,35 +289,29 @@ void write_dcd_next_frame(DCDFILE *dcd)
   fseek(dcd->fp, original_pos, SEEK_SET);
 }
 
-DCDFILE *read_open_dcd(char filename[], DCDFILE *dcd)
-{
+DCDFILE *read_open_dcd(char filename[], DCDFILE *dcd) {
   dcd->fp = fopen(filename, "rb");
-  if (NULL == dcd->fp)
-  {
+  if (NULL == dcd->fp) {
     return NULL;
   }
 
   int status;
   status = read_dcd_header(dcd);
-  if (DCD_SUCCESS != status)
-  {
+  if (DCD_SUCCESS != status) {
     return NULL;
   }
   return dcd;
 }
 
-DCDFILE *write_open_dcd(char filename[], uint32_t n_atoms, DCDFILE *dcd)
-{
+DCDFILE *write_open_dcd(char filename[], uint32_t n_atoms, DCDFILE *dcd) {
   dcd->fp = fopen(filename, "wb");
-  if (NULL == dcd->fp)
-  {
+  if (NULL == dcd->fp) {
     return NULL;
   }
 
   dcd->n_atoms = n_atoms;
 
-  for (int dim = 0; dim < DIM; dim++)
-  {
+  for (int dim = 0; dim < DIM; dim++) {
     dcd->xyz[dim] = (float *)malloc(dcd->n_atoms * sizeof(float)); 
   }
   dcd->n_frames = 0;
@@ -337,12 +331,8 @@ DCDFILE *write_open_dcd(char filename[], uint32_t n_atoms, DCDFILE *dcd)
 }
 
 
-void close_dcd(DCDFILE *dcd)
-{
-
-
-  for(int dim = 0; dim < DIM; dim++)
-  {
+void close_dcd(DCDFILE *dcd) {
+  for(int dim = 0; dim < DIM; dim++) {
     free(dcd->xyz[dim]);
     dcd->xyz[dim] = NULL;
   }

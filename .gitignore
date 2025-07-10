@@ -4,3 +4,4 @@ main.c
 *.exe
 dcdplugin.c
 *.i
+**/*.o

@@ -31,8 +31,7 @@ uint32_t[8]
 uint32_t CHARMM_VERSION // charmm_version
 */
 
-typedef struct
-{
+typedef struct {
   FILE *fp;
   char *filename;
   // hdr information
