@@ -5,10 +5,13 @@
 int main(int argc, char *argv[]) {
   XDRFILE xtc;
   int data;
-  if (NULL == read_open_xdr(argv[1], &xtc)) {
+  if (xdrOK != read_open_xtc(argv[1], &xtc)) {
     return 0;
   }
-  xdr_read_int32(&data, 1, &xtc);
-  printf("%d\n", data);
+
+  printf("xtc.n_atoms = %d\n", xtc.n_atoms);
+  printf("xtc.current_frame = %d\n", xtc.current_frame);
+  printf("xtc.time = %f\n", xtc.time);
+  
   return 0;
 }

@@ -4,10 +4,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+enum {
+  dcdOK, dcdOPENERROR,
+};
+
 enum ENDIAN
 {
   LittleEndian,
-  BigEndian
+  BigEndian,
+  sameEndian,
+  reverseEndian
 };
 
 #define UNITCELL_LENGTH 6
