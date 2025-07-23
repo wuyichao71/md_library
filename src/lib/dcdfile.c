@@ -134,6 +134,26 @@ int read_dcd_header(DCDFILE *dcd)
 
   dcd->current_frame = -1;
 
+  long original_pos = ftell(dcd->fp);
+
+  fseek(dcd->fp, 0, SEEK_END);
+  long end_pos = ftell(dcd->fp);
+
+  
+  uint32_t total_frame_size = (end_pos - original_pos);
+  const uint32_t one_frame_size = ((sizeof(uint32_t) * 2 + sizeof(dcd->unitcell)) + DIM * (sizeof(uint32_t) * 2 + dcd->n_atoms * sizeof(float)));
+  if (0 != total_frame_size % one_frame_size) {
+    read_error("The trajectory is broken!");
+  }
+
+  uint32_t n_frames = (end_pos - original_pos) / one_frame_size;
+  if (dcd->n_frames != n_frames) {
+    dcd->n_frames = n_frames;
+  }
+
+
+  fseek(dcd->fp, original_pos, SEEK_SET);
+
 #ifdef DEBUG
   DEF(PRINT_ENUM);
 
@@ -202,8 +222,6 @@ int write_dcd_header(DCDFILE *dcd)
   fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
   fwrite(&dcd->n_atoms, sizeof(dcd->n_atoms), 1, dcd->fp);
   fwrite(&record_marker, sizeof(record_marker), 1, dcd->fp);
-
-  // fseek(dcd->fp, 0, SEEK_END);
 
 
 #ifdef DEBUG

@@ -203,6 +203,7 @@ int main(int argc, char *argv[])
     while ((read_status = fgets(trajname, sizeof(trajname), filelist_fp)) && trajname[0] == '\n');
     if (NULL == read_status) ERROR("There is no filename in %s", trajlist_name);
     remove_newline(trajname);
+
   } else {
     // if not use trajlist, read from command line arguments
     strcpy(trajname, argv[optind++]);
@@ -276,7 +277,7 @@ int main(int argc, char *argv[])
       close_dcd(&in_dcd);
   }
 
-  close_dcd(&out_dcd);
+  if (use_outname) close_dcd(&out_dcd);
 
   if (index_array.length != 0) free_index(&index_array);
 
